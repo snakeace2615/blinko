@@ -10,12 +10,9 @@ import { useMediaQuery } from 'usehooks-ts';
 import { BlinkoAddButton } from '@/components/BlinkoAddButton';
 import { LoadingAndEmpty } from '@/components/Common/LoadingAndEmpty';
 import { useSearchParams, useLocation } from 'react-router-dom';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import dayjs from '@/lib/dayjs';
-import { NoteType } from '@shared/lib/types';
 import { Icon } from '@/components/Common/Iconify/icons';
-import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core';
-import { useDragCard, DraggableBlinkoCard } from '@/hooks/useDragCard';
 
 interface TodoGroup {
   displayDate: string;
@@ -35,9 +32,6 @@ const Home = observer(() => {
   const isArchivedView = searchParams.get('path') === 'archived';
   const isTrashView = searchParams.get('path') === 'trash';
   const isAllView = searchParams.get('path') === 'all';
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const [insertPosition, setInsertPosition] = useState<number | null>(null);
-  const [isDragForbidden, setIsDragForbidden] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const currentListState = useMemo(() => {
@@ -55,17 +49,6 @@ const Home = observer(() => {
       return blinko.blinkoList;
     }
   }, [isNotesView, isTodoView, isArchivedView, isTrashView, isAllView, blinko]);
-
-  // Use drag card hook only for non-todo views
-  const { localNotes, sensors, setLocalNotes, handleDragStart, handleDragEnd, handleDragOver } = useDragCard({
-    notes: isTodoView ? undefined : currentListState.value,
-    activeId,
-    setActiveId,
-    insertPosition,
-    setInsertPosition,
-    isDragForbidden,
-    setIsDragForbidden
-  });
 
   const store = RootStore.Local(() => ({
     editorHeight: 30,
@@ -183,48 +166,18 @@ const Home = observer(() => {
               )}
             </div>
           ) : (
-            <>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-              >
-                <Masonry
-                  breakpointCols={{
-                    default: blinko.config?.value?.largeDeviceCardColumns ? Number(blinko.config?.value?.largeDeviceCardColumns) : 2,
-                    1280: blinko.config?.value?.mediumDeviceCardColumns ? Number(blinko.config?.value?.mediumDeviceCardColumns) : 2,
-                    768: blinko.config?.value?.smallDeviceCardColumns ? Number(blinko.config?.value?.smallDeviceCardColumns) : 1
-                  }}
-                  className="card-masonry-grid"
-                  columnClassName="card-masonry-grid_column">
-                  {
-                    localNotes?.map((i, index) => {
-                      const showInsertLine = insertPosition === i.id && activeId !== i.id;
-                      return (
-                        <DraggableBlinkoCard
-                          key={i.id}
-                          blinkoItem={i}
-                          showInsertLine={showInsertLine}
-                          insertPosition="top"
-                          isDragForbidden={isDragForbidden && showInsertLine}
-                        />
-                      );
-                    })
-                  }
-                </Masonry>
-                <DragOverlay>
-                  {activeId ? (
-                    <div className="rotate-3 scale-105 opacity-90 max-w-sm shadow-xl">
-                      <BlinkoCard
-                        blinkoItem={localNotes.find(n => n.id === activeId)}
-                      />
-                    </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            </>
+            <Masonry
+              breakpointCols={{
+                default: blinko.config?.value?.largeDeviceCardColumns ? Number(blinko.config?.value?.largeDeviceCardColumns) : 2,
+                1280: blinko.config?.value?.mediumDeviceCardColumns ? Number(blinko.config?.value?.mediumDeviceCardColumns) : 2,
+                768: blinko.config?.value?.smallDeviceCardColumns ? Number(blinko.config?.value?.smallDeviceCardColumns) : 1
+              }}
+              className="card-masonry-grid"
+              columnClassName="card-masonry-grid_column">
+              {currentListState.value?.map((note: any) => (
+                <BlinkoCard key={note.id} blinkoItem={note} />
+              ))}
+            </Masonry>
           )}
 
           {store.showLoadAll && <div className='select-none w-full text-center text-sm font-bold text-ignore my-4'>{t('all-notes-have-been-loaded', { items: currentListState.value?.length })}</div>}
